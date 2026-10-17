@@ -3,7 +3,7 @@
   "id": "elektryn",
   "version": "${version}",
   "name": "Elektryn",
-  "description": "Mod optymalizujacy Minecrafta: mniej zbednego renderowania, wiecej FPS.",
+  "description": "Lightweight entity culling and first-launch performance defaults.",
   "authors": ["Elektryn"],
   "license": "MIT",
   "environment": "client",
