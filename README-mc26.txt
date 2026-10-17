@@ -5,9 +5,9 @@ ELEKTRYN - szkielet buildu dla Minecrafta 26.x
                      src/main/resources -> mc26/src/main/resources
    (fabric.mod.json i plik mixin tez; w fabric.mod.json ustaw "minecraft": "~26.1" i "java": ">=25")
 3. Zastap .github/workflows/build.yml plikiem z tego zipa (dodaje job build-26).
-4. Commit -> Actions -> artefakt elektryn-26.1.2.
+4. Commit -> Actions -> artefakty elektryn-26.1, 26.1.1, 26.1.2, 26.2, 26.3.
 
 UWAGA: to tylko szkielet. Nic nie zostalo zbudowane ani uruchomione.
 Kod moda trzeba poprawic pod 26.x - bledy z logu wklej do Claude.
 Sprawdz aktualne wersje Loom / Fabric Loader / Gradle na Fabric Develop.
-Wersje 26.2 i 26.3 nie zostaly potwierdzone, dlatego ich nie ma.
+Sprawdz na Fabric Develop, ktore wersje 26.x (np. 26.1.1) naprawde istnieja; usun te, ktorych nie ma, z macierzy w build.yml.
