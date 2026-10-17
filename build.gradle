@@ -1,36 +1,23 @@
 plugins {
-    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version '1.15-SNAPSHOT'
 }
 
-// Wszystko wyliczane z jednej wartosci: -Pmc=1.20.4
-def mcVer = (project.findProperty('mc') ?: '1.21.1').toString()
-def parts = mcVer.tokenize('.')
-int minor = parts[1] as int
-int patch = parts.size() > 2 ? (parts[2] as int) : 0
+version = "${mod_version}+${minecraft_version}"
 
-def buildMc = (minor == 14) ? '1.14.4' : mcVer        // 1.14-1.14.3 nie maja oficjalnych nazw Mojanga
-def mcDep   = (minor == 14) ? '~1.14' : mcVer
-int javaRel = minor <= 16 ? 8 : (minor == 17 ? 16 : ((minor <= 19 || (minor == 20 && patch <= 4)) ? 17 : 21))
-def variant = minor == 14 ? 'v14' : (minor <= 18 ? 'legacy' : 'modern')
-
-version = project.mod_version
-group = 'pl.elektryn'
-base { archivesName = "elektryn-${mcVer}" }
-
-repositories { mavenCentral() }
+base {
+    archivesName = 'elektryn'
+}
 
 dependencies {
-    minecraft "com.mojang:minecraft:${buildMc}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
 }
 
-sourceSets.main.java.srcDir "src/${variant}/java"
-
-def props = [version: project.mod_version, mc_dep: mcDep, compat: "JAVA_${javaRel}".toString()]
-processResources {
-    inputs.properties props
-    filesMatching(['fabric.mod.json', 'elektryn.mixins.json']) { expand props }
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
-tasks.withType(JavaCompile).configureEach { it.options.release = javaRel }
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+}

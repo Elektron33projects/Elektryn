@@ -9,197 +9,6 @@ jobs:
         mc: ['1.14', '1.14.1', '1.14.2', '1.14.3', '1.14.4', '1.15', '1.15.1', '1.15.2', '1.16', '1.16.1', '1.16.2', '1.16.3', '1.16.4', '1.16.5', '1.17', '1.17.1', '1.18', '1.18.1', '1.18.2', '1.19', '1.19.1', '1.19.2', '1.19.3', '1.19.4', '1.20', '1.20.1', '1.20.2', '1.20.3', '1.20.4', '1.20.5', '1.20.6', '1.21', '1.21.1', '1.21.2', '1.21.3', '1.21.4', '1.21.5', '1.21.6', '1.21.7', '1.21.8', '1.21.9', '1.21.10', '1.21.11']
     steps:
       - uses: actions/checkout@v4
-      - name: Create source files
-        run: |
-          mkdir -p src/legacy/java/pl/elektryn
-          cat > src/legacy/java/pl/elektryn/OptionsApplier.java <<'EOF'
-          package pl.elektryn;
-          
-          import net.minecraft.client.Minecraft;
-          import net.minecraft.client.Options;
-          import net.minecraft.client.ParticleStatus;
-          
-          /** 1.15 - 1.18.2: ustawienia to zwykle pola. */
-          public final class OptionsApplier {
-              private OptionsApplier() {}
-          
-              public static void apply(Options o, Minecraft mc) {
-                  if (ElektrynConfig.uncapFps) {
-                      o.framerateLimit = 260;
-                      o.enableVsync = false;
-                      mc.getWindow().updateVsync(false);
-                  }
-                  if (ElektrynConfig.disableEntityShadows) o.entityShadows = false;
-                  if (ElektrynConfig.reduceParticles) o.particles = ParticleStatus.DECREASED;
-                  if (ElektrynConfig.noMipmaps) o.mipmapLevels = 0;
-              }
-          }
-          EOF
-          mkdir -p src/main/java/pl/elektryn
-          cat > src/main/java/pl/elektryn/ElektrynConfig.java <<'EOF'
-          package pl.elektryn;
-          
-          public final class ElektrynConfig {
-              /** Encje dalej niz tyle blokow nie sa renderowane (gracze zawsze). */
-              public static double entityCullDistance = 48.0;
-              public static boolean disableEntityShadows = true;
-              public static boolean reduceParticles = true;
-              public static boolean noBiomeBlend = true;
-              public static boolean noMipmaps = false;
-              public static boolean uncapFps = true;
-          
-              private ElektrynConfig() {}
-          }
-          EOF
-          mkdir -p src/main/java/pl/elektryn/mixin
-          cat > src/main/java/pl/elektryn/mixin/EntityRendererMixin.java <<'EOF'
-          package pl.elektryn.mixin;
-          
-          import net.minecraft.client.renderer.entity.EntityRenderer;
-          import net.minecraft.world.entity.Entity;
-          import net.minecraft.world.entity.player.Player;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Coerce;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-          import pl.elektryn.ElektrynConfig;
-          
-          /** Entity culling. @Coerce na frustum, bo typ klasy zmienia sie miedzy wersjami. */
-          @Mixin(EntityRenderer.class)
-          public abstract class EntityRendererMixin {
-          
-              @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
-              private void elektryn$cull(Entity entity, @Coerce Object frustum, double x, double y, double z,
-                                         CallbackInfoReturnable<Boolean> cir) {
-                  if (entity instanceof Player) return;
-                  double max = ElektrynConfig.entityCullDistance;
-                  if (entity.distanceToSqr(x, y, z) > max * max) {
-                      cir.setReturnValue(false);
-                  }
-              }
-          }
-          EOF
-          mkdir -p src/main/java/pl/elektryn/mixin
-          cat > src/main/java/pl/elektryn/mixin/MinecraftMixin.java <<'EOF'
-          package pl.elektryn.mixin;
-          
-          import java.nio.file.Files;
-          import java.nio.file.Path;
-          import net.fabricmc.loader.api.FabricLoader;
-          import net.minecraft.client.Minecraft;
-          import net.minecraft.client.Options;
-          import org.spongepowered.asm.mixin.Final;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.Shadow;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-          import pl.elektryn.OptionsApplier;
-          
-          @Mixin(Minecraft.class)
-          public abstract class MinecraftMixin {
-              @Shadow @Final public Options options;
-          
-              /** Ustawienia stosujemy raz (pierwsze uruchomienie), zeby nie nadpisywac wyborow gracza. */
-              @Inject(method = "<init>", at = @At("TAIL"))
-              private void elektryn$init(CallbackInfo ci) {
-                  try {
-                      Path flag = FabricLoader.getInstance().getConfigDir().resolve("elektryn-applied.flag");
-                      if (Files.exists(flag)) return;
-                      OptionsApplier.apply(this.options, (Minecraft) (Object) this);
-                      this.options.save();
-                      Files.write(flag, new byte[0]);
-                  } catch (Throwable t) {
-                      System.err.println("[Elektryn] Nie udalo sie zastosowac ustawien: " + t);
-                  }
-              }
-          }
-          EOF
-          mkdir -p src/main/resources
-          cat > src/main/resources/elektryn.mixins.json <<'EOF'
-          {
-            "required": true,
-            "package": "pl.elektryn.mixin",
-            "compatibilityLevel": "${compat}",
-            "client": ["EntityRendererMixin", "MinecraftMixin"]
-          }
-          EOF
-          mkdir -p src/main/resources
-          cat > src/main/resources/fabric.mod.json <<'EOF'
-          {
-            "schemaVersion": 1,
-            "id": "elektryn",
-            "version": "${version}",
-            "name": "Elektryn",
-            "description": "Mod optymalizujacy Minecrafta: mniej zbednego renderowania, wiecej FPS.",
-            "authors": ["Elektryn"],
-            "license": "MIT",
-            "environment": "client",
-            "mixins": ["elektryn.mixins.json"],
-            "depends": {
-              "fabricloader": ">=0.15.0",
-              "minecraft": "${mc_dep}"
-            }
-          }
-          EOF
-          mkdir -p src/modern/java/pl/elektryn
-          cat > src/modern/java/pl/elektryn/OptionsApplier.java <<'EOF'
-          package pl.elektryn;
-          
-          import net.minecraft.client.Minecraft;
-          import net.minecraft.client.OptionInstance;
-          import net.minecraft.client.Options;
-          
-          /** 1.19 - 1.21.11: ustawienia to OptionInstance. */
-          public final class OptionsApplier {
-              private OptionsApplier() {}
-          
-              /** Bez importu ParticleStatus, bo ta klasa zmienia pakiet miedzy wersjami (1.21.2+). */
-              @SuppressWarnings({"unchecked", "rawtypes"})
-              private static void reduceParticles(Options o) {
-                  OptionInstance opt = o.particles();
-                  Object current = opt.get();
-                  if (current instanceof Enum) {
-                      Object[] values = ((Enum<?>) current).getDeclaringClass().getEnumConstants();
-                      if (values.length > 1) opt.set(values[1]); // ALL, DECREASED, MINIMAL
-                  }
-              }
-          
-              public static void apply(Options o, Minecraft mc) {
-                  if (ElektrynConfig.uncapFps) {
-                      o.framerateLimit().set(260);
-                      o.enableVsync().set(false);
-                      mc.getWindow().updateVsync(false);
-                  }
-                  if (ElektrynConfig.disableEntityShadows) o.entityShadows().set(false);
-                  if (ElektrynConfig.reduceParticles) reduceParticles(o);
-                  if (ElektrynConfig.noBiomeBlend) o.biomeBlendRadius().set(0);
-                  if (ElektrynConfig.noMipmaps) o.mipmapLevels().set(0);
-                  o.entityDistanceScaling().set(0.75);
-              }
-          }
-          EOF
-          mkdir -p src/v14/java/pl/elektryn
-          cat > src/v14/java/pl/elektryn/OptionsApplier.java <<'EOF'
-          package pl.elektryn;
-          
-          import net.minecraft.client.Minecraft;
-          import net.minecraft.client.Options;
-          
-          /** 1.14.x: tylko najbardziej podstawowe ustawienia. */
-          public final class OptionsApplier {
-              private OptionsApplier() {}
-          
-              public static void apply(Options o, Minecraft mc) {
-                  if (ElektrynConfig.uncapFps) {
-                      o.framerateLimit = 260;
-                      o.enableVsync = false;
-                  }
-                  if (ElektrynConfig.disableEntityShadows) o.entityShadows = false;
-              }
-          }
-          EOF
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
       - uses: gradle/actions/setup-gradle@v4
@@ -209,3 +18,18 @@ jobs:
         with:
           name: elektryn-${{ matrix.mc }}
           path: build/libs/elektryn-${{ matrix.mc }}-*.jar
+
+  build-26:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 25 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 9.4.0 }
+      - run: gradle build
+        working-directory: mc26
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elektryn-26.1.2
+          path: mc26/build/libs/elektryn-*.jar
