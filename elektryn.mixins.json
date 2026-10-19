@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "pl.elektryn.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "EntityRendererMixin",
+    "MinecraftMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
