@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "elektryn",
+  "version": "${version}",
+  "name": "Elektryn 26 Low RAM",
+  "description": "Client-side performance tweaks. These settings do not guarantee lower RAM usage.",
+  "authors": ["Elektryn"],
+  "license": "MIT",
+  "environment": "client",
+  "mixins": ["elektryn.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21"
+  }
+}
